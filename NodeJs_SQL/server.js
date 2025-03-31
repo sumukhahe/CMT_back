@@ -15,10 +15,11 @@ app.use(bodyParser.json());
 
 // MySQL connection
 const connection = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "native_blog",
+  host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
+  port: process.env.DB_PORT || 30590,
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "PDabrubqjVEvMHClAzIFOHdGNXFqSMec",
+  database: process.env.DB_NAME || "railway",
 });
 
 connection.connect((err) => {

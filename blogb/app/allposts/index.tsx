@@ -17,9 +17,9 @@ import { useRouter, Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
-
+import config from "@/config";
 const { width } = Dimensions.get("window");
-const API_BASE_URL = "http://172.20.10.4:5000";
+const API_BASE_URL = config.apiUrl;
 
 // Helper function to build a full image URL from a relative path.
 const getFullImageUrl = (imagePath: string): string => {

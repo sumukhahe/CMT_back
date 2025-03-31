@@ -12,8 +12,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-
-const BASE_URL = "http://172.20.10.4:5000";
+import config from "@/config";
+const BASE_URL = config.apiUrl;
 
 // Helper function to return full URL for an image
 const getFullImageUrl = (imagePath: string): string => {

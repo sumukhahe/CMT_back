@@ -21,7 +21,7 @@ import * as ImagePicker from "expo-image-picker";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import * as Notifications from "expo-notifications";
 import PreviewModal from "./PreviewModal";
-
+import config from "@/config";
 const { width } = Dimensions.get("window");
 
 interface FormDataType {
@@ -84,7 +84,7 @@ const AddBlogPostScreen: React.FC = () => {
   // Fetch categories from the API.
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://172.20.10.4:5000/api/categories");
+      const response = await fetch(`${config.apiUrl}/api/categories`);
       const data = await response.json();
       // Assuming each category object has a 'name' property.
       const catNames = data.map(
@@ -183,7 +183,7 @@ const AddBlogPostScreen: React.FC = () => {
     data.append("postType", postType);
 
     try {
-      const response = await fetch("http://172.20.10.4:5000/api/add-post", {
+      const response = await fetch(`${config.apiUrl}/api/add-post`, {
         method: "POST",
         // Do not set Content-Type manually when using FormData.
         body: data,
@@ -216,14 +216,11 @@ const AddBlogPostScreen: React.FC = () => {
   const handleSaveCategory = async () => {
     if (newCategory.trim().length > 0) {
       try {
-        const response = await fetch(
-          "http://172.20.10.4:5000/api/add-category",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: newCategory.trim() }),
-          }
-        );
+        const response = await fetch(`${config.apiUrl}/api/add-category`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newCategory.trim() }),
+        });
         const result = await response.json();
         if (response.ok) {
           await fetchCategories(); // Refresh categories from the server.

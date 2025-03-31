@@ -19,10 +19,10 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
-
+import config from "@/config";
 const { width } = Dimensions.get("window");
 // Replace with your actual API URL
-const API_BASE_URL = "http://172.20.10.4:5000";
+const API_BASE_URL = config.apiUrl;
 
 const AccountSettingsScreen: React.FC = () => {
   // Profile states (removed profileImage)

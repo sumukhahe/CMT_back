@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
+import config from "@/config";
 const { width } = Dimensions.get("window");
 
 const AuthScreen: React.FC = () => {
@@ -45,7 +45,7 @@ const AuthScreen: React.FC = () => {
     }
     setError(null);
     try {
-      const response = await fetch("http://172.20.10.4:5000/api/login", {
+      const response = await fetch(`${config.apiUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

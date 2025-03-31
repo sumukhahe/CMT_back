@@ -15,7 +15,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
-
+import config from "@/config";
 // Define an interface for a blog post.
 interface BlogPost {
   id: string;
@@ -32,7 +32,7 @@ interface BlogPost {
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const API_BASE_URL = "http://172.20.10.4:5000";
+const API_BASE_URL = config.apiUrl;
 
 // Helper: Build a full image URL from a relative path.
 // If the path already starts with "http", returns it as is.

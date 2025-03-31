@@ -18,11 +18,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import PreviewModal from "../posts/PreviewModal";
-
+import config from "@/config";
 const { width } = Dimensions.get("window");
 
 // Instead of dummy categories, we will fetch real categories.
-const BASE_URL = "http://172.20.10.4:5000";
+const BASE_URL = config.apiUrl;
 
 // Helper: decode and normalize a parameter to a string.
 const getParamAsString = (param: string | string[] | undefined): string =>
@@ -239,7 +239,15 @@ export default function EditBlogPostScreen() {
         if (form.image && !form.image.startsWith("file://")) {
           imagePathForServer = form.image;
         }
-        if (imagePathForServer.includes("172.20.10.4:5000")) {
+        // Import config at the top of your file
+
+        // Then update your conditional code
+        if (imagePathForServer.includes(config.apiUrl)) {
+          // Extract just the path portion by removing the base URL
+          const urlObj = new URL(imagePathForServer);
+          imagePathForServer = urlObj.pathname;
+        } else if (imagePathForServer.includes("172.20.10.4:5000")) {
+          // Keep the old logic as a fallback for backward compatibility
           imagePathForServer = imagePathForServer.split("172.20.10.4:5000")[1];
         }
         body = JSON.stringify({

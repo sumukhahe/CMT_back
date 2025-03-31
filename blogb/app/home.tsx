@@ -19,11 +19,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle } from "react-native-svg";
 import BlogPostsScreen from "./allposts";
 import { useRouter } from "expo-router";
+import config from "../config";
 
 const { width } = Dimensions.get("window");
 
 // Define your BASE_URL – ensure this matches your server accessible from your device.
-const BASE_URL = "http://172.20.10.4:5000";
+const BASE_URL = config.apiUrl;
 
 // Helper function to return the full image URL.
 const getFullImageUrl = (imagePath: string): string => {
