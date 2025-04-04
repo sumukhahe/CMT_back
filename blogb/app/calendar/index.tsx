@@ -208,6 +208,49 @@ export default function BlogCalendarScreen() {
       });
   };
 
+  // Add this function inside your BlogCalendarScreen component
+  const confirmDeletePost = (post: BlogPost) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this post?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => handleDeletePost(post),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleDeletePost = async (post: BlogPost) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/delete-post`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: post.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete post: ${response.status}`);
+      }
+
+      // Optionally, remove the post from the state to update the UI.
+      setPosts((prevPosts) => prevPosts.filter((p) => p.id !== post.id));
+      Alert.alert("Success", "Post deleted successfully");
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      Alert.alert("Error", "Failed to delete post");
+    }
+  };
+
   // Render the calendar grid.
   const renderCalendar = (): JSX.Element[] => {
     const { days, firstDay } = getDaysInMonth(selectedDate);
@@ -344,9 +387,7 @@ export default function BlogCalendarScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.deleteButton}
-                  onPress={() => {
-                    // Set up deletion logic if needed
-                  }}
+                  onPress={() => confirmDeletePost(post)}
                 >
                   <Ionicons name="trash-outline" size={20} color="white" />
                 </TouchableOpacity>

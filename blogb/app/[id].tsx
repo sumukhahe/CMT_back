@@ -308,7 +308,16 @@ export default function AdminPostDetailScreen() {
         </TouchableOpacity>
         <Text style={styles.navTitle}>Post Details</Text>
         <TouchableOpacity
-          onPress={() => router.push(`/posts/edit/${id}` as any)}
+          onPress={() =>
+            router.push({
+              pathname: "/calendar/editpost",
+              params: {
+                id,
+                pname: post.pname,
+                aname: post.aname /* ...other params */,
+              },
+            })
+          }
           style={styles.editButton}
         >
           <Ionicons name="pencil" size={22} color="#1a8e2d" />

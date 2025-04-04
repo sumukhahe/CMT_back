@@ -205,10 +205,15 @@ export default function EditBlogPostScreen() {
     }
   };
 
-  // Submit update function.
+  // Updated submitUpdate function to fix the up_date null issue
   const submitUpdate = async () => {
     try {
       console.log("Starting update with id:", normalizedParams.id);
+
+      // Always provide a valid up_date value (current date/time)
+      const currentDateTime = new Date().toISOString();
+      console.log("Using current date/time for up_date:", currentDateTime);
+
       let body;
       let headers: HeadersInit = {};
 
@@ -226,30 +231,26 @@ export default function EditBlogPostScreen() {
         formData.append("img_title", form.img_title);
         formData.append("pdesc", form.pdesc);
         formData.append("cname", selectedCategory);
-        formData.append(
-          "up_date",
-          !normalizedParams.stime || normalizedParams.stime.trim() === ""
-            ? new Date().toISOString()
-            : ""
-        );
-        formData.append("stime", normalizedParams.stime);
+
+        // Always set up_date to current date/time instead of null
+        formData.append("up_date", currentDateTime);
+
+        formData.append("stime", normalizedParams.stime || "");
         body = formData;
       } else {
         let imagePathForServer = form.originalImage;
         if (form.image && !form.image.startsWith("file://")) {
           imagePathForServer = form.image;
         }
-        // Import config at the top of your file
 
-        // Then update your conditional code
+        // Process the image path if needed
         if (imagePathForServer.includes(config.apiUrl)) {
-          // Extract just the path portion by removing the base URL
           const urlObj = new URL(imagePathForServer);
           imagePathForServer = urlObj.pathname;
-        } else if (imagePathForServer.includes("172.20.10.4:5000")) {
-          // Keep the old logic as a fallback for backward compatibility
-          imagePathForServer = imagePathForServer.split("172.20.10.4:5000")[1];
+        } else if (imagePathForServer.includes("192.0.0.2:5000")) {
+          imagePathForServer = imagePathForServer.split("192.0.0.2:5000")[1];
         }
+
         body = JSON.stringify({
           id: normalizedParams.id,
           image: imagePathForServer,
@@ -259,14 +260,19 @@ export default function EditBlogPostScreen() {
           img_title: form.img_title,
           pdesc: form.pdesc,
           cname: selectedCategory,
-          up_date:
-            !normalizedParams.stime || normalizedParams.stime.trim() === ""
-              ? new Date().toISOString()
-              : null,
-          stime: normalizedParams.stime,
+
+          // Always set up_date to current date/time instead of null
+          up_date: currentDateTime,
+
+          stime: normalizedParams.stime || "",
         });
         headers["Content-Type"] = "application/json";
       }
+
+      console.log(
+        "Submitting update with body:",
+        typeof body === "string" ? body.substring(0, 500) : "FormData object"
+      );
 
       const response = await fetch(`${BASE_URL}/api/update-post`, {
         method: "PUT",
@@ -287,7 +293,10 @@ export default function EditBlogPostScreen() {
       if (!response.ok) {
         throw new Error(responseData.error || "Failed to update post");
       }
+
       console.log("Post updated successfully:", responseData);
+      Alert.alert("Success", "Your post has been updated successfully.");
+
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "Post Updated!",
@@ -295,12 +304,13 @@ export default function EditBlogPostScreen() {
         },
         trigger: null,
       });
+
       router.back();
     } catch (error) {
       console.error("Error updating post:", error);
-      alert(
-        "Error updating post: " +
-          (error instanceof Error ? error.message : String(error))
+      Alert.alert(
+        "Error updating post",
+        error instanceof Error ? error.message : String(error)
       );
     }
   };

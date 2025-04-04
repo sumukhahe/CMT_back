@@ -24,9 +24,10 @@ const { width } = Dimensions.get("window");
 // Replace with your actual API URL
 const API_BASE_URL = config.apiUrl;
 
+
 const AccountSettingsScreen: React.FC = () => {
   // Profile states (removed profileImage)
-  const [username, setUsername] = useState<string>("John Doe");
+  const [username, setUsername] = useState<string>("CMT");
 
   // Dark mode toggle
   const [darkMode, setDarkMode] = useState<boolean>(false);

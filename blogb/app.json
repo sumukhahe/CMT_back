@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "blogb",
+    "name": "CMT Blog",
     "slug": "blogb",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "This app uses FaceID for secure authentication."
+        "NSFaceIDUsageDescription": "This app uses FaceID for secure authentication.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.CMT.blog"
     },
@@ -20,13 +21,18 @@
         "foregroundImage": "./assets/images/cmtlogo.png",
         "backgroundColor": "#ffffff"
       },
-      "usesCleartextTraffic": true,
       "package": "com.CMT.blog",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
-      ]
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",
@@ -38,7 +44,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/cmtlogo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -47,7 +53,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share them with your friends."
+          "photosPermission": "The app accesses your photos to let you share them with your friends.",
+          "cameraPermission": "The app needs access to your camera to take photos for your blog posts."
         }
       ],
       [

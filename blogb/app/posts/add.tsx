@@ -84,8 +84,20 @@ const AddBlogPostScreen: React.FC = () => {
   // Fetch categories from the API.
   const fetchCategories = async () => {
     try {
+      console.log(
+        "Fetching categories from:",
+        `${config.apiUrl}/api/categories`
+      );
       const response = await fetch(`${config.apiUrl}/api/categories`);
+
+      if (!response.ok) {
+        console.error("Failed to fetch categories. Status:", response.status);
+        throw new Error(`Failed to fetch with status ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log("Categories data:", data);
+
       // Assuming each category object has a 'name' property.
       const catNames = data.map(
         (cat: { id: number; name: string }) => cat.name
@@ -101,109 +113,258 @@ const AddBlogPostScreen: React.FC = () => {
         "Finance",
         "Travel",
         "Science",
-        "Create New",
+        " + Create New",
       ]);
     }
   };
 
   async function registerForPushNotifications() {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    try {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") {
+        console.log("Failed to get push notification permission");
+        return;
+      }
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.log("Expo push token:", token);
+    } catch (error) {
+      console.error("Error registering for push notifications:", error);
     }
-    if (finalStatus !== "granted") {
-      Alert.alert("Failed to get push token for push notifications!");
-      return;
-    }
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log(token);
   }
 
-  // Image picker function.
+  // Enhanced Image picker function
   const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.status !== "granted") {
-      Alert.alert("Permission to access the media library is required!");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-    if (!result.canceled) {
-      const selectedImageUri = result.assets[0].uri;
-      console.log("Selected image URI:", selectedImageUri);
-      setImage(selectedImageUri);
-      setForm({ ...form, image: selectedImageUri });
+    try {
+      // For Android 13+ (SDK 33+), you need to use requestPermissionsAsync
+      // Check current permissions
+      const { status: existingStatus } =
+        await ImagePicker.getMediaLibraryPermissionsAsync();
+
+      console.log("Current permission status:", existingStatus);
+
+      // Only ask if permissions have not already been determined
+      if (existingStatus !== "granted") {
+        console.log("Requesting permissions...");
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        console.log("Permission request result:", status);
+
+        if (status !== "granted") {
+          // On Android, show a more detailed error that helps users enable permissions manually
+          Alert.alert(
+            "Permission Required",
+            "This app needs access to your media library. Please go to Settings > Apps > blogb > Permissions and enable Storage permission.",
+            [
+              {
+                text: "OK",
+                onPress: () => console.log("Permission alert closed"),
+              },
+            ]
+          );
+          return;
+        }
+      }
+
+      // Now launch the image picker with explicit try/catch
+      try {
+        console.log("Launching image picker...");
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        });
+
+        console.log(
+          "Image picker result:",
+          JSON.stringify(result).substring(0, 150) + "..."
+        );
+
+        if (!result.canceled) {
+          const selectedImageUri = result.assets[0].uri;
+          console.log("Selected image URI:", selectedImageUri);
+          setImage(selectedImageUri);
+          setForm({ ...form, image: selectedImageUri });
+        } else {
+          console.log("User cancelled image picker");
+        }
+      } catch (pickError) {
+        console.error("Error during image picking:", pickError);
+        Alert.alert("Error", "Failed to pick image. Please try again.");
+      }
+    } catch (permissionError) {
+      console.error("Error requesting permissions:", permissionError);
+      Alert.alert(
+        "Permission Error",
+        "There was a problem with permission handling. Please ensure the app has the necessary permissions in your device settings."
+      );
     }
   };
 
-  // Function to submit the post using FormData.
+  // Enhanced submitPost function
+  // Fixed submitPost function that includes the up_date field
   const submitPost = async (
     scheduledTime: Date | null = null
   ): Promise<void> => {
-    const postType = scheduledTime ? "schedule" : "now";
-    const data = new FormData();
+    try {
+      // Show loading indicator
+      Alert.alert("Posting", "Submitting your post...");
 
-    // Append file if image exists.
-    if (image) {
-      // On Android, convert the file URI to a blob.
-      if (Platform.OS === "android") {
+      const postType = scheduledTime ? "schedule" : "now";
+      const data = new FormData();
+
+      console.log("Starting post submission process...");
+      console.log("Post type:", postType);
+      console.log("Form data:", JSON.stringify(form));
+      console.log("Selected category:", selectedCategory);
+
+      // Validation - check required fields
+      if (!form.pname.trim()) {
+        Alert.alert("Error", "Post title is required");
+        return;
+      }
+
+      if (!selectedCategory) {
+        Alert.alert("Error", "Please select a category");
+        return;
+      }
+
+      // Always include current date/time for up_date field
+      const currentDateTime = new Date().toISOString();
+      console.log("Using current date/time for up_date:", currentDateTime);
+
+      // Append file if image exists
+      if (image) {
+        console.log("Preparing image for upload:", image);
+
         try {
-          const response = await fetch(image);
-          const blob = await response.blob();
-          data.append("file", blob, "upload.jpg");
-        } catch (error) {
-          console.error("Error converting image to blob:", error);
+          const uriParts = image.split(".");
+          const fileType = uriParts[uriParts.length - 1];
+
+          // Construct file object with proper type
+          const fileObject = {
+            uri: image,
+            name: `upload_${Date.now()}.${fileType}`,
+            type: `image/${fileType === "jpg" ? "jpeg" : fileType}`,
+          };
+
+          console.log("File object:", JSON.stringify(fileObject));
+
+          // Append file to FormData
+          data.append("file", fileObject as any);
+        } catch (imageError) {
+          console.error("Error appending image:", imageError);
+          Alert.alert(
+            "Error",
+            "Failed to process the image. Please try again."
+          );
+          return;
         }
       } else {
-        // On iOS, you can append the file object directly.
-        data.append("file", {
-          uri: image,
-          name: "upload.jpg",
-          type: "image/jpeg",
-        } as any);
+        console.log("No image selected for upload");
       }
-    }
 
-    // Append other fields.
-    data.append("pname", form.pname);
-    data.append("aname", form.aname);
-    data.append("img_alt", form.img_alt);
-    data.append("img_title", form.img_title);
-    data.append("pdesc", form.pdesc);
-    data.append("cname", selectedCategory);
-    data.append("stime", scheduledTime ? scheduledTime.toISOString() : "");
-    data.append("postType", postType);
+      // Append other fields
+      data.append("pname", form.pname);
+      data.append("aname", form.aname || "Anonymous"); // Default value if empty
+      data.append("img_alt", form.img_alt || "");
+      data.append("img_title", form.img_title || "");
+      data.append("pdesc", form.pdesc || "");
+      data.append("cname", selectedCategory);
+      data.append("up_date", currentDateTime); // Add the up_date field here
+      data.append("stime", scheduledTime ? scheduledTime.toISOString() : "");
+      data.append("postType", postType);
 
-    try {
-      const response = await fetch(`${config.apiUrl}/api/add-post`, {
-        method: "POST",
-        // Do not set Content-Type manually when using FormData.
-        body: data,
-      });
-      const result = await response.json();
-      if (response.ok) {
-        console.log("Post stored successfully:", result);
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Post Submitted!",
-            body: "Your post has been submitted successfully.",
-          },
-          trigger: null,
+      // Log the full request for debugging
+      console.log("API URL:", `${config.apiUrl}/api/add-post`);
+
+      // For debugging FormData contents
+      console.log("FormData contents:");
+      // @ts-ignore: data._parts is not in the type definition but exists at runtime
+      if (data._parts) {
+        // @ts-ignore
+        data._parts.forEach((part: any) => {
+          if (part[0] === "file") {
+            console.log(`${part[0]}: [File object]`);
+          } else {
+            console.log(`${part[0]}: ${part[1]}`);
+          }
         });
-        router.back();
-      } else {
-        console.error("Error storing post:", result.error);
+      }
+
+      // Make the API request
+      try {
+        console.log("Sending request to:", `${config.apiUrl}/api/add-post`);
+
+        const response = await fetch(`${config.apiUrl}/api/add-post`, {
+          method: "POST",
+          body: data,
+        });
+
+        console.log("Response status:", response.status);
+
+        // Get response text first
+        const responseText = await response.text();
+        console.log("Raw response text:", responseText);
+
+        // Try to parse response as JSON
+        let result;
+        try {
+          if (responseText) {
+            result = JSON.parse(responseText);
+            console.log("Response data:", JSON.stringify(result));
+          }
+        } catch (jsonError) {
+          console.warn("Could not parse response as JSON:", jsonError);
+        }
+
+        if (response.ok) {
+          console.log("Post stored successfully");
+
+          // Schedule notification before showing alert
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Post Submitted!",
+              body: `Your post "${form.pname}" has been submitted successfully.`,
+            },
+            trigger: null,
+          });
+
+          // Show success alert and navigate back AFTER user dismisses the alert
+          Alert.alert("Success", "Your post has been submitted successfully", [
+            { text: "OK", onPress: () => router.back() },
+          ]);
+        } else {
+          console.error(
+            "Server returned error:",
+            response.status,
+            result?.error || "Unknown error"
+          );
+          Alert.alert(
+            "Error",
+            `Failed to submit post: ${result?.error || "Unknown error"}`
+          );
+        }
+      } catch (networkError) {
+        console.error("Network error during submission:", networkError);
+        Alert.alert(
+          "Network Error",
+          "Could not connect to the server. Please check your internet connection and try again."
+        );
       }
     } catch (error) {
-      console.error("Error submitting post:", error);
+      console.error("Unexpected error in submission process:", error);
+      Alert.alert(
+        "Error",
+        "An unexpected error occurred. Please try again later."
+      );
     }
   };
 
@@ -216,23 +377,47 @@ const AddBlogPostScreen: React.FC = () => {
   const handleSaveCategory = async () => {
     if (newCategory.trim().length > 0) {
       try {
+        console.log("Saving new category:", newCategory.trim());
+
         const response = await fetch(`${config.apiUrl}/api/add-category`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: newCategory.trim() }),
         });
-        const result = await response.json();
+
+        console.log("Add category response status:", response.status);
+
+        let result;
+        try {
+          result = await response.json();
+          console.log("Add category result:", result);
+        } catch (jsonError) {
+          const textResponse = await response.text();
+          console.log("Response text:", textResponse);
+        }
+
         if (response.ok) {
           await fetchCategories(); // Refresh categories from the server.
           setSelectedCategory(newCategory.trim());
           setNewCategory("");
           setShowCreateCategoryModal(false);
+          Alert.alert("Success", "New category created successfully");
         } else {
-          console.error("Error adding category:", result.error);
+          console.error(
+            "Error adding category:",
+            result?.error || "Unknown error"
+          );
+          Alert.alert(
+            "Error",
+            `Failed to create category: ${result?.error || "Unknown error"}`
+          );
         }
       } catch (error) {
         console.error("Error:", error);
+        Alert.alert("Error", "Failed to create category. Please try again.");
       }
+    } else {
+      Alert.alert("Error", "Category name cannot be empty");
     }
   };
 
