@@ -15,11 +15,11 @@ app.use(bodyParser.json());
 
 // MySQL connection
 const connection = mysql.createConnection({
-  host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
-  port: process.env.DB_PORT || 30590,
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "PDabrubqjVEvMHClAzIFOHdGNXFqSMec",
-  database: process.env.DB_NAME || "railway",
+  host: "mainline.proxy.rlwy.net",
+  port: 58823,
+  user: "root",
+  password: "uAMZgmpzVBSFmcwzIydtTYdgnyNhGnNM",
+  database: "railway",
 });
 
 connection.connect((err) => {
@@ -101,7 +101,7 @@ app.post("/api/user/update-profile", (req, res) => {
   });
 });
 
-// Helper to get next ID for blog-post table.
+// Helper to get next ID for blogpost table.
 const getNextId = (table, callback) => {
   const query = `SELECT MAX(\`sl.no\`) AS maxId FROM \`${table}\``;
   connection.query(query, (err, results) => {
@@ -168,14 +168,14 @@ app.post("/api/add-post", upload.single("file"), (req, res) => {
     ? `/nativeuploads/${req.file.filename}`
     : req.body.image;
 
-  getNextId("blog-post", (err, newId) => {
+  getNextId("blogpost", (err, newId) => {
     if (err) {
       return res
         .status(500)
         .json({ error: "Database error fetching max sl.no" });
     }
     const query = `
-      INSERT INTO \`blog-post\` (\`sl.no\`, pimage, pname, aname, img_alt, img_title, pdesc, cname, up_date, stime) 
+      INSERT INTO \`blogpost\` (\`sl.no\`, pimage, pname, aname, img_alt, img_title, pdesc, cname, up_date, stime) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
@@ -220,7 +220,7 @@ app.get("/api/get-posts", (req, res) => {
       up_date, 
       stime, 
       views 
-    FROM \`blog-post\`
+    FROM \`blogpost\`
     ORDER BY stime DESC
   `;
   connection.query(query, (err, results) => {
@@ -237,7 +237,7 @@ app.get("/api/get-posts", (req, res) => {
 // GET single post by id.
 app.get("/api/get-posts/:id", (req, res) => {
   const postId = req.params.id;
-  const query = "SELECT * FROM `blog-post` WHERE `sl.no` = ? LIMIT 1";
+  const query = "SELECT * FROM `blogpost` WHERE `sl.no` = ? LIMIT 1";
   connection.query(query, [postId], (err, results) => {
     if (err) {
       console.error("DB Error:", err);
@@ -261,7 +261,7 @@ app.get("/api/popular-posts", (req, res) => {
            pdesc AS excerpt,
            stime AS time,
            views AS visits
-    FROM \`blog-post\`
+    FROM \`blogpost\`
     ORDER BY views DESC
     LIMIT 5
   `;
@@ -278,7 +278,7 @@ app.get("/api/popular-posts", (req, res) => {
 
 // PUT update post.
 // PUT update post.
-app.put("/api/update-post", (req, res) => {
+app.put("/api/update-post", upload.single("file"), (req, res) => {
   const {
     id,
     image,
@@ -292,11 +292,15 @@ app.put("/api/update-post", (req, res) => {
     stime,
   } = req.body;
 
-  let formattedUpDate = up_date;
-  let formattedStime = stime;
-
-  // Format up_date to IST if provided.
-  if (up_date && up_date !== "null" && up_date !== null) {
+  // Default to current time if up_date is null, empty, or undefined
+  let formattedUpDate;
+  if (!up_date || up_date === "null" || up_date === "") {
+    const now = new Date();
+    const utcTime = now.getTime();
+    const istTime = new Date(utcTime + 5.5 * 60 * 60 * 1000);
+    formattedUpDate = istTime.toISOString().slice(0, 19).replace("T", " ");
+    console.log("Using current time for up_date:", formattedUpDate);
+  } else {
     try {
       const dateObj = new Date(up_date);
       const utcTime = dateObj.getTime();
@@ -308,8 +312,9 @@ app.put("/api/update-post", (req, res) => {
     }
   }
 
-  // Format stime to IST if provided.
-  if (stime && stime !== "null" && stime !== null) {
+  // Format stime to IST if provided, or set to empty string
+  let formattedStime = "";
+  if (stime && stime !== "null" && stime !== "") {
     try {
       const dateObj = new Date(stime);
       const utcTime = dateObj.getTime();
@@ -321,6 +326,9 @@ app.put("/api/update-post", (req, res) => {
     }
   }
 
+  console.log("Formatted up_date:", formattedUpDate);
+  console.log("Formatted stime:", formattedStime);
+
   // Declare query and values variables outside the if/else.
   let query;
   let values;
@@ -329,7 +337,7 @@ app.put("/api/update-post", (req, res) => {
     // If a file is provided, update the image field.
     const imagePath = `/nativeuploads/${req.file.filename}`;
     query = `
-      UPDATE \`blog-post\`
+      UPDATE \`blogpost\`
       SET pimage = ?, pname = ?, aname = ?, img_alt = ?, img_title = ?, pdesc = ?, cname = ?, up_date = ?, stime = ?
       WHERE \`sl.no\` = ?
     `;
@@ -342,13 +350,13 @@ app.put("/api/update-post", (req, res) => {
       pdesc,
       cname,
       formattedUpDate,
-      formattedStime,
+      formattedStime || null,
       id,
     ];
   } else {
     // If no file is provided, update all fields except the image.
     query = `
-      UPDATE \`blog-post\`
+      UPDATE \`blogpost\`
       SET pname = ?, aname = ?, img_alt = ?, img_title = ?, pdesc = ?, cname = ?, up_date = ?, stime = ?
       WHERE \`sl.no\` = ?
     `;
@@ -360,10 +368,13 @@ app.put("/api/update-post", (req, res) => {
       pdesc,
       cname,
       formattedUpDate,
-      formattedStime,
+      formattedStime || null,
       id,
     ];
   }
+
+  console.log("SQL Query:", query);
+  console.log("SQL Values:", values);
 
   connection.query(query, values, (err, result) => {
     if (err) {
@@ -382,7 +393,7 @@ app.put("/api/update-post", (req, res) => {
 // DELETE post.
 app.delete("/api/delete-post", (req, res) => {
   const { id } = req.body;
-  const query = "DELETE FROM `blog-post` WHERE `sl.no` = ?";
+  const query = "DELETE FROM `blogpost` WHERE `sl.no` = ?";
   connection.query(query, [id], (err, result) => {
     if (err) {
       console.error("DB Error:", err);
@@ -408,7 +419,7 @@ app.get("/api/notifications", (req, res) => {
       up_date, 
       stime, 
       views 
-    FROM \`blog-post\`
+    FROM \`blogpost\`
     WHERE stime <= NOW()
     ORDER BY up_date DESC
     LIMIT 10
@@ -425,7 +436,7 @@ app.get("/api/notifications", (req, res) => {
 });
 
 // Mark all notifications (posts with stime <= NOW()) as read.
-// You might need to add a field (e.g. `read` or `notifications_read`) to your blog-post table.
+// You might need to add a field (e.g. `read` or `notifications_read`) to your blogpost table.
 // Mark a single notification as read
 app.post("/api/mark-notification-read", (req, res) => {
   const notificationId = req.body.id;
@@ -436,7 +447,7 @@ app.post("/api/mark-notification-read", (req, res) => {
   }
 
   const query = `
-    UPDATE \`blog-post\`
+    UPDATE \`blogpost\`
     SET read = 1
     WHERE \`sl.no\` = ? AND (read IS NULL OR read = 0)
   `;
@@ -458,7 +469,7 @@ app.post("/api/mark-notification-read", (req, res) => {
 app.post("/api/mark-notification-read/:id", (req, res) => {
   const notificationId = req.params.id;
   const query = `
-    UPDATE \`blog-post\`
+    UPDATE \`blogpost\`
     SET read = 1
     WHERE \`sl.no\` = ? AND (read IS NULL OR read = 0)
   `;
@@ -495,7 +506,7 @@ app.get("/api/admin/comment-notifications", (req, res) => {
       IFNULL(c.is_read, 0) as is_read
     FROM comments c
     JOIN users u ON c.user_id = u.id
-    JOIN \`blog-post\` bp ON c.post_id = bp.\`sl.no\`
+    JOIN \`blogpost\` bp ON c.post_id = bp.\`sl.no\`
     WHERE c.is_read = 0 OR c.is_read IS NULL
     ORDER BY c.created_at DESC
     LIMIT 20
@@ -564,7 +575,7 @@ app.put("/api/increment-views/:id", (req, res) => {
 
   // First get the current views count
   const getViewsQuery =
-    "SELECT views FROM `blog-post` WHERE `sl.no` = ? LIMIT 1";
+    "SELECT views FROM `blogpost` WHERE `sl.no` = ? LIMIT 1";
   connection.query(getViewsQuery, [postId], (err, results) => {
     if (err) {
       console.error("DB Error fetching views:", err);
@@ -582,7 +593,7 @@ app.put("/api/increment-views/:id", (req, res) => {
     const newViews = currentViews + 1;
 
     // Update the views count
-    const updateQuery = "UPDATE `blog-post` SET views = ? WHERE `sl.no` = ?";
+    const updateQuery = "UPDATE `blogpost` SET views = ? WHERE `sl.no` = ?";
     connection.query(
       updateQuery,
       [newViews, postId],
@@ -660,7 +671,7 @@ app.get("/api/related-posts/:category/:currentPostId", (req, res) => {
       up_date, 
       stime, 
       views 
-    FROM \`blog-post\`
+    FROM \`blogpost\`
     WHERE cname = ? AND \`sl.no\` != ?
     ORDER BY stime DESC
     LIMIT 5
@@ -687,23 +698,31 @@ app.post("/api/update-profile", (req, res) => {
   if (!id) {
     id = 1;
   }
-  const query =
-    "UPDATE backusers SET username = ?, profileimage = ?, darkmode = ? WHERE id = ?";
-  connection.query(
-    query,
-    [username, profileImage, darkMode ? 1 : 0, id],
-    (err, result) => {
-      if (err) {
-        console.error("DB Error:", err);
-        return res
-          .status(500)
-          .json({ error: "Database error while updating profile" });
-      }
-      res
-        .status(200)
-        .json({ message: "Profile updated successfully", data: result });
+
+  let query;
+  let params;
+
+  // If no profileImage is provided, update only username and darkmode.
+  if (profileImage === undefined || profileImage === null) {
+    query = "UPDATE backusers SET username = ?, darkmode = ? WHERE id = ?";
+    params = [username, darkMode ? 1 : 0, id];
+  } else {
+    query =
+      "UPDATE backusers SET username = ?, profileimage = ?, darkmode = ? WHERE id = ?";
+    params = [username, profileImage, darkMode ? 1 : 0, id];
+  }
+
+  connection.query(query, params, (err, result) => {
+    if (err) {
+      console.error("DB Error:", err);
+      return res
+        .status(500)
+        .json({ error: "Database error while updating profile" });
     }
-  );
+    res
+      .status(200)
+      .json({ message: "Profile updated successfully", data: result });
+  });
 });
 
 // Update password (for backusers).
@@ -988,7 +1007,7 @@ app.get("/api/search-posts", (req, res) => {
         up_date, 
         stime, 
         views 
-      FROM \`blog-post\` 
+      FROM \`blogpost\` 
       WHERE pname LIKE ? AND cname = ? 
       ORDER BY stime DESC
     `;
@@ -1008,7 +1027,7 @@ app.get("/api/search-posts", (req, res) => {
         up_date, 
         stime, 
         views 
-      FROM \`blog-post\` 
+      FROM \`blogpost\` 
       WHERE pname LIKE ? 
       ORDER BY stime DESC
     `;
@@ -1222,76 +1241,128 @@ app.post("/api/posts/:postId/like", authenticate, (req, res) => {
       console.error("DB Error checking like:", err);
       return res.status(500).json({ error: "Database error" });
     }
+
     if (results.length > 0) {
-      // Like already exists. Do not allow modification.
-      return res
-        .status(400)
-        .json({ error: "You have already liked this post." });
-    }
-
-    // Increment the like count on the post.
-    connection.query(
-      "UPDATE `blog-post` SET likes = likes + 1 WHERE `sl.no` = ?",
-      [postId],
-      (err, updateResult) => {
-        if (err) {
-          console.error("DB Error updating likes:", err);
-          return res
-            .status(500)
-            .json({ error: "Database error updating likes" });
-        }
-        if (updateResult.affectedRows === 0) {
-          return res.status(404).json({ error: "Post not found" });
-        }
-
-        // Retrieve the post name from the blog-post table.
-        connection.query(
-          "SELECT pname FROM `blog-post` WHERE `sl.no` = ?",
-          [postId],
-          (err, postResults) => {
-            if (err || postResults.length === 0) {
-              console.error("DB Error retrieving post details:", err);
-              return res
-                .status(500)
-                .json({ error: "Database error retrieving post details" });
-            }
-            const postName = postResults[0].pname;
-
-            // Insert the like record into user_likes.
-            connection.query(
-              "INSERT INTO user_likes (user_id, post_id, post_name) VALUES (?, ?, ?)",
-              [userId, postId, postName],
-              (err, insertResult) => {
-                if (err) {
-                  console.error("DB Error inserting like:", err);
-                  return res
-                    .status(500)
-                    .json({ error: "Database error storing like" });
-                }
-                connection.query(
-                  "SELECT likes FROM `blog-post` WHERE `sl.no` = ?",
-                  [postId],
-                  (err, selectResults) => {
-                    if (err) {
-                      console.error("DB Error retrieving likes:", err);
-                      return res
-                        .status(500)
-                        .json({ error: "Database error retrieving likes" });
-                    }
-                    return res
-                      .status(200)
-                      .json({ liked: true, likes: selectResults[0].likes });
-                  }
-                );
-              }
-            );
+      // User has already liked the post - UNLIKE it
+      connection.query(
+        "DELETE FROM user_likes WHERE user_id = ? AND post_id = ?",
+        [userId, postId],
+        (err, deleteResult) => {
+          if (err) {
+            console.error("DB Error removing like:", err);
+            return res
+              .status(500)
+              .json({ error: "Database error removing like" });
           }
-        );
-      }
-    );
+
+          // Decrement the like count on the post
+          connection.query(
+            "UPDATE `blogpost` SET likes = likes - 1 WHERE `sl.no` = ?",
+            [postId],
+            (err, updateResult) => {
+              if (err) {
+                console.error("DB Error updating likes:", err);
+                return res
+                  .status(500)
+                  .json({ error: "Database error updating likes" });
+              }
+
+              if (updateResult.affectedRows === 0) {
+                return res.status(404).json({ error: "Post not found" });
+              }
+
+              // Get updated like count
+              connection.query(
+                "SELECT likes FROM `blogpost` WHERE `sl.no` = ?",
+                [postId],
+                (err, selectResults) => {
+                  if (err) {
+                    console.error("DB Error retrieving likes:", err);
+                    return res
+                      .status(500)
+                      .json({ error: "Database error retrieving likes" });
+                  }
+                  return res.status(200).json({
+                    liked: false,
+                    likes: selectResults[0].likes,
+                  });
+                }
+              );
+            }
+          );
+        }
+      );
+    } else {
+      // User hasn't liked the post yet - LIKE it
+
+      // Increment the like count on the post.
+      connection.query(
+        "UPDATE `blogpost` SET likes = likes + 1 WHERE `sl.no` = ?",
+        [postId],
+        (err, updateResult) => {
+          if (err) {
+            console.error("DB Error updating likes:", err);
+            return res
+              .status(500)
+              .json({ error: "Database error updating likes" });
+          }
+
+          if (updateResult.affectedRows === 0) {
+            return res.status(404).json({ error: "Post not found" });
+          }
+
+          // Retrieve the post name from the blogpost table.
+          connection.query(
+            "SELECT pname FROM `blogpost` WHERE `sl.no` = ?",
+            [postId],
+            (err, postResults) => {
+              if (err || postResults.length === 0) {
+                console.error("DB Error retrieving post details:", err);
+                return res
+                  .status(500)
+                  .json({ error: "Database error retrieving post details" });
+              }
+
+              const postName = postResults[0].pname;
+
+              // Insert the like record into user_likes.
+              connection.query(
+                "INSERT INTO user_likes (user_id, post_id, post_name) VALUES (?, ?, ?)",
+                [userId, postId, postName],
+                (err, insertResult) => {
+                  if (err) {
+                    console.error("DB Error inserting like:", err);
+                    return res
+                      .status(500)
+                      .json({ error: "Database error storing like" });
+                  }
+
+                  connection.query(
+                    "SELECT likes FROM `blogpost` WHERE `sl.no` = ?",
+                    [postId],
+                    (err, selectResults) => {
+                      if (err) {
+                        console.error("DB Error retrieving likes:", err);
+                        return res
+                          .status(500)
+                          .json({ error: "Database error retrieving likes" });
+                      }
+
+                      return res.status(200).json({
+                        liked: true,
+                        likes: selectResults[0].likes,
+                      });
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    }
   });
 });
-
 // -----------------------------------------------------------------
 // Check if a Post is Liked by the Authenticated User (Requires authentication)
 // -----------------------------------------------------------------
@@ -1322,7 +1393,7 @@ app.get("/api/user/liked-posts", (req, res) => {
   // Modified query to not use the created_at column from user_likes
   const query = `
     SELECT p.*
-    FROM \`blog-post\` p
+    FROM \`blogpost\` p
     JOIN user_likes l ON p.\`sl.no\` = l.post_id
     WHERE l.user_id = ?
     ORDER BY p.stime DESC
@@ -1357,7 +1428,7 @@ app.get("/api/user/comments", (req, res) => {
   const query = `
     SELECT c.*, p.pname AS post_title, p.\`sl.no\` AS post_id
     FROM comments c
-    JOIN \`blog-post\` p ON c.post_id = p.\`sl.no\`
+    JOIN \`blogpost\` p ON c.post_id = p.\`sl.no\`
     WHERE c.user_id = ?
     ORDER BY c.created_at DESC
   `;
@@ -1372,8 +1443,12 @@ app.get("/api/user/comments", (req, res) => {
     res.status(200).json(results);
   });
 });
-
 // -------------------------
 // START THE SERVER
-// -------------------------
-app.listen(5000, () => console.log("Server running on port 5000"));
+// -------------------------// Find where you set up your server
+// Replace or modify your server listening code with this:
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+});
